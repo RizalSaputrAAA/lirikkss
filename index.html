@@ -158,10 +158,8 @@ body {
   opacity: .85;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .grain, .warm { animation: none; }
-  #world, #world.zoomout { transition-duration: .01s; }
-}
+/* Blok @media (prefers-reduced-motion) sudah dihapus
+   supaya animasi tetap sama di semua perangkat. */
 </style>
 </head>
 
@@ -292,9 +290,9 @@ body {
   var finished = false;
   var started = false;
 
-  var reduce = window.matchMedia(
-    '(prefers-reduced-motion: reduce)'
-  ).matches;
+  // Selalu false: jeda dan kecepatan ketik sama di laptop maupun HP,
+  // apa pun pengaturan "reduce motion" di perangkat.
+  var reduce = false;
 
 
   // =====================================
