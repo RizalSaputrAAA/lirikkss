@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Puisi Kode</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com/3.4.17"></script>
+
+<style>
+:root {
+  --bg: #05060a;
+  --ink: #e8ecf5;
+  --punct: #aab3cf;
+  --comment: #6b7394;
+  --fn: #7aa2f7;
+  --str: #9ece6a;
+  --kw: #f7768e;
+  --arg: #ff9e64;
+  --warm: #e0af68;
+  --viol: #bb9af7;
+  --sky: #8ab4ff;
+  --hud: rgba(232,236,245,.28);
+  --mono: "JetBrains Mono", Consolas, monospace;
+  color-scheme: dark;
+}
+
+html, body {
+  height: 100%;
+}
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--mono);
+  overflow: hidden;
+  margin: 0;
+}
+
+#world {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: max-content;
+  padding-left: max(16px, 7vw);
+  transform-origin: 0 0;
+  transition: transform .7s cubic-bezier(.2,.7,.2,1);
+  font-size: clamp(17px, 4.6vw, 30px);
+  line-height: 1.75;
+  will-change: transform;
+}
+
+#world.zoomout {
+  transition: transform 2.2s cubic-bezier(.65,0,.25,1);
+}
+
+.line {
+  position: relative;
+  white-space: pre;
+  min-height: 1.75em;
+  opacity: 0;
+  filter: blur(0);
+  transition: opacity .6s ease, filter .6s ease;
+}
+
+.line.active {
+  text-shadow: 0 0 18px rgba(170,190,255,.22);
+  -webkit-box-reflect: below -.15em linear-gradient(transparent 40%, rgba(0,0,0,.3));
+}
+
+.t-c { color: var(--comment); font-style: italic; }
+.t-v { color: var(--ink); }
+.t-p { color: var(--punct); }
+.t-f { color: var(--fn); }
+.t-s { color: var(--str); }
+.t-k { color: var(--kw); }
+.t-o { color: var(--arg); }
+.t-y { color: var(--warm); }
+.t-u { color: var(--viol); }
+.t-a { color: var(--sky); }
+
+#cursor {
+  display: inline-block;
+  width: .1em;
+  height: 1.15em;
+  margin-left: 1px;
+  vertical-align: -.2em;
+  background: var(--ink);
+  box-shadow: 0 0 10px rgba(232,236,245,.7);
+  animation: blink 1s steps(1) infinite;
+}
+
+#cursor.typing {
+  animation: none;
+}
+
+@keyframes blink {
+  50% { opacity: 0; }
+}
+
+.vignette {
+  background: radial-gradient(ellipse at 50% 45%, transparent 35%, rgba(0,0,0,.75) 100%);
+}
+
+.warm {
+  background: linear-gradient(180deg, rgba(255,140,40,.07), transparent 40%);
+  animation: flick 5s ease-in-out infinite;
+}
+
+@keyframes flick {
+  0%,100% { opacity: .35; }
+  45% { opacity: 1; }
+  70% { opacity: .5; }
+}
+
+.grain {
+  inset: -50%;
+  opacity: .16;
+  mix-blend-mode: screen;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .9 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+  animation: grain .8s steps(6) infinite;
+}
+
+@keyframes grain {
+  0% { transform: translate(0,0); }
+  17% { transform: translate(-6%,4%); }
+  33% { transform: translate(5%,-7%); }
+  50% { transform: translate(-3%,8%); }
+  67% { transform: translate(7%,3%); }
+  83% { transform: translate(-8%,-4%); }
+  100% { transform: translate(0,0); }
+}
+
+.corner {
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  border-color: var(--hud);
+}
+
+.hud {
+  font-size: 10px;
+  letter-spacing: .08em;
+  color: var(--hud);
+  font-variant-numeric: tabular-nums;
+}
+
+#again {
+  transition: opacity .8s ease;
+}
+
+#song {
+  width: min(320px, 85vw);
+  height: 38px;
+  opacity: .85;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .grain, .warm { animation: none; }
+  #world, #world.zoomout { transition-duration: .01s; }
+}
+</style>
+</head>
+
+<body>
+
+<main id="stage" class="fixed inset-0 overflow-hidden" aria-label="Puisi kode">
+
+  <div id="world" aria-live="off"></div>
+
+  <!-- PEMUTAR LAGU -->
+  <div class="absolute top-8 left-1/2 -translate-x-1/2 z-50">
+    <audio id="song" controls preload="auto">
+      <source src="/lagu/Download (5).mp4" type="video/mp4">
+      Browser tidak mendukung pemutar audio.
+    </audio>
+  </div>
+
+  <div class="pointer-events-none absolute inset-0">
+
+    <div class="warm absolute inset-0"></div>
+    <div class="grain absolute"></div>
+    <div class="vignette absolute inset-0"></div>
+
+    <div class="absolute inset-0"
+      style="padding: calc(14px + env(safe-area-inset-top, 0px)) max(14px, env(safe-area-inset-right, 0px)) calc(14px + env(safe-area-inset-bottom, 0px)) max(14px, env(safe-area-inset-left, 0px));">
+
+      <div class="relative h-full w-full">
+
+        <i class="corner left-0 top-0 border-l border-t"></i>
+        <i class="corner right-0 top-0 border-r border-t"></i>
+        <i class="corner bottom-0 left-0 border-b border-l"></i>
+        <i class="corner bottom-0 right-0 border-b border-r"></i>
+
+        <span class="hud absolute bottom-2 left-3">
+          KODAK 5219&nbsp;&nbsp;35MM
+        </span>
+
+        <span id="tc" class="hud absolute bottom-2 right-3">
+          00:00:00:00
+        </span>
+
+      </div>
+    </div>
+
+    <div id="again"
+      class="absolute inset-x-0 text-center opacity-0"
+      style="bottom: calc(52px + env(safe-area-inset-bottom, 0px));">
+
+      <span class="hud" style="font-size:11px">
+        lagu selesai - tekan play untuk mengulang
+      </span>
+
+    </div>
+
+  </div>
+</main>
+
+<script>
+(function () {
+
+  // =====================================
+  // ISI PUISI
+  // =====================================
+
+  var poem = [
+    [['c', '// terlukis indah']],
+    [],
+    [['y','AkuKanAda()'],['p','.'],['f','untuk'],['p','('],['s','"dirimu"'],['p',');']],
+    [['p','  .'],['a','danBertahan'],['p','('],['k','untuk'],['p','.'],['o','muu~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~uuuuu'],['p',')!!'],['!',2500]],
+    [],
+    [['v','Ter'],['p','.'],['f','lukis'],['p','('],['y','indah()'],['p',');']],
+    [],
+    [['p','.'],['v','raut'],['p','('],['s','"wajahMu"'],['p',');{']],
+    [['p','  .'],['k','from'],['p','('],['s','"dalam benak"'],['p',')'],['p','.'],['f','ku()'],['!',1900]],
+    [['p','  '],['v','berikan'],['p','.'],['u','ku'],['p','.'],['f','cinta'],['p','('],['s','"terindah"'],['p',');']],
+    [['p','}']],
+    [],
+    [['v','dan'],['p','.'],['v','hanyaUntuk'],['p','.'],['f','ku()'],['!',2000]],
+    [['p','  '],['y','Tertulis()']],
+    [['p','  .'],['f','indah'],['p','('],['s','"puisi"'],['p',');']],
+    [['y','cinta'],['p','.'],['f','dalam'],['p','('],['s','"Hatiku"'],['p',');'],['!',2000] ],
+    [],
+    [['p','.'],['v','dan'],['p','('],['s','"aku"'],['p','){']],
+    [['p','  .'],['k','yakin'],['p','('],['s','"kau memang lah"'],['p',')'],['p','.'],['f','pilihan()']],
+    [['p','  '],['k','from'],['p','('],['s','"HATIKUUU"'],['p',');']],
+    [['p','}']],
+    [['c', '// coder Zalzz']]
+  ];
+
+
+  // =====================================
+  // PENGATURAN KECEPATAN
+  // =====================================
+
+  var TYPE_MIN = 30;
+  var TYPE_RANGE = 20;
+  var LINE_PAUSE = 420;
+  var BLANK_PAUSE = 520;
+
+  // Jeda khusus setelah "AkuKanAda."
+  // (baris ke-3, span ke-2 yaitu titik). Ubah sesuka hati (ms).
+  var SPECIAL_PAUSE = 2500;
+
+  // Jeda di akhir baris tertentu (nomor baris mulai dari 0, termasuk baris kosong)
+  //  2 = AkuKanAda.untuk("dirimu")
+  // Cara yang lebih mudah: tambahkan ['!', ms] di akhir baris pada array poem,
+  // jedanya otomatis ikut barisnya walau posisinya dipindah.
+  var PAUSE_AFTER_LINE = {
+    2: 2000
+  };
+
+
+  // =====================================
+  // ELEMENT
+  // =====================================
+
+  var world = document.getElementById('world');
+  var stage = document.getElementById('stage');
+  var again = document.getElementById('again');
+  var tcEl = document.getElementById('tc');
+  var audio = document.getElementById('song');
+
+  var cursor = document.createElement('span');
+  cursor.id = 'cursor';
+
+  var lines = [];
+  var runId = 0;
+  var finished = false;
+  var started = false;
+
+  var reduce = window.matchMedia(
+    '(prefers-reduced-motion: reduce)'
+  ).matches;
+
+
+  // =====================================
+  // MEMBANGUN LIRIK
+  // =====================================
+  function build() {
+    world.innerHTML = '';
+    world.classList.remove('zoomout');
+    world.style.transform = '';
+    lines = poem.map(function (toks) {
+      var el = document.createElement('div');
+      el.className = 'line';
+      // Penanda jeda: ['!', ms] di akhir baris
+      var pause = 0;
+      var real = toks.filter(function (t) {
+        if (t[0] === '!') {
+          pause = t[1];
+          return false;
+        }
+        return true;
+      });
+      var spans = real.map(function (t) {
+        var s = document.createElement('span');
+        s.className = 't-' + t[0];
+        el.appendChild(s);
+        return {
+          el: s,
+          text: t[1]
+        };
+      });
+      world.appendChild(el);
+      return {
+        el: el,
+        spans: spans,
+        pause: pause
+      };
+    });
+  }
+
+  // =====================================
+  // FOKUS BARIS
+  // =====================================
+  function focusLine(i) {
+    lines.forEach(function (l, k) {
+      var d = i - k;
+      l.el.classList.toggle('active', d === 0);
+      if (d < 0) {
+        l.el.style.opacity = 0;
+        return;
+      }
+      l.el.style.opacity =
+        d === 0 ? 1 : Math.max(0.1, 0.52 - 0.11 * (d - 1));
+      l.el.style.filter =
+        d > 2
+          ? 'blur(' + Math.min(2.4, (d - 2) * 0.55) + 'px)'
+          : 'none';
+    });
+  }
+
+  // =====================================
+  // GERAKAN KAMERA
+  // =====================================
+  function pan(i) {
+    var vw = window.innerWidth;
+    var vh = window.innerHeight;
+    var line = lines[i].el;
+    var cy = line.offsetTop + line.offsetHeight / 2;
+    var pad =
+      parseFloat(getComputedStyle(world).paddingLeft) || 0;
+    var cx =
+      pad + cursor.offsetLeft + cursor.offsetWidth;
+    var ty = vh * 0.4 - cy;
+    var tx = Math.min(0, vw * 0.9 - cx);
+    world.style.transform =
+      'translate(' + tx.toFixed(1) + 'px,' +
+      ty.toFixed(1) + 'px)';
+  }
+
+  // =====================================
+  // ZOOM OUT
+  // =====================================
+  function zoomOut() {
+    var vw = window.innerWidth;
+    var vh = window.innerHeight;
+    var w = world.offsetWidth;
+    var h = world.offsetHeight;
+    var s = Math.min(
+      (vw * 0.88) / w,
+      (vh * 0.7) / h,
+      1
+    );
+    var tx = (vw - w * s) / 2;
+    var ty = (vh - h * s) / 2;
+    world.classList.add('zoomout');
+    lines.forEach(function (l) {
+      l.el.classList.remove('active');
+      l.el.style.opacity = 1;
+      l.el.style.filter = 'none';
+    });
+    world.style.transform =
+      'translate(' + tx.toFixed(1) + 'px,' +
+      ty.toFixed(1) + 'px) scale(' +
+      s.toFixed(3) + ')';
+  }
+
+  // =====================================
+  // JEDA YANG MENGIKUTI STATUS AUDIO
+  // =====================================
+  async function waitWithAudio(ms, id) {
+    var elapsed = 0;
+    var last = performance.now();
+    while (elapsed < ms) {
+      if (id !== runId || audio.ended) {
+        return false;
+      }
+      var now = performance.now();
+      // Waktu hanya bertambah saat lagu diputar
+      if (!audio.paused) {
+        elapsed += now - last;
+      }
+      last = now;
+      await new Promise(function (resolve) {
+        setTimeout(resolve, 20);
+      });
+    }
+    return id === runId && !audio.ended;
+  }
+
+  // =====================================
+  // ANIMASI LIRIK
+  // =====================================
+  async function playLyrics() {
+    var id = ++runId;
+    finished = false;
+    again.style.opacity = 0;
+    build();
+    await waitWithAudio(500, id);
+
+    for (var i = 0; i < lines.length; i++) {
+      if (id !== runId || audio.ended) return;
+      var L = lines[i];
+      focusLine(i);
+      L.el.style.opacity = 1;
+
+      // BARIS KOSONG
+      if (!L.spans.length) {
+        L.el.appendChild(cursor);
+        cursor.classList.remove('typing');
+        pan(i);
+        var blankOK = await waitWithAudio(
+          reduce ? 50 : BLANK_PAUSE,
+          id
+        );
+        if (!blankOK) return;
+        continue;
+      }
+
+      // MENGETIK SETIAP KARAKTER
+      for (var s = 0; s < L.spans.length; s++) {
+        var sp = L.spans[s];
+        sp.el.after(cursor);
+
+        for (var c = 0; c < sp.text.length; c++) {
+          if (id !== runId || audio.ended) return;
+          sp.el.textContent += sp.text[c];
+          cursor.classList.add('typing');
+          pan(i);
+          var ch = sp.text[c];
+          var d = reduce
+            ? 5
+            : TYPE_MIN +
+              Math.random() * TYPE_RANGE +
+              (ch === '.' || ch === '(' ? 40 : 0);
+          var typeOK = await waitWithAudio(d, id);
+          if (!typeOK) return;
+        }
+
+        // JEDA KHUSUS: setelah "AkuKanAda" + "."
+        // i === 2 -> baris ketiga, s === 1 -> span titik "."
+        // (ganti s === 1 jadi s === 0 kalau mau jeda sebelum titik)
+        if (i === 2 && s === 1) {
+          cursor.classList.remove('typing'); // kursor berkedip saat jeda
+          var midOK = await waitWithAudio(
+            reduce ? 50 : SPECIAL_PAUSE,
+            id
+          );
+          if (!midOK) return;
+        }
+      }
+
+      cursor.classList.remove('typing');
+
+      // JEDA KHUSUS di akhir baris tertentu (lihat PAUSE_AFTER_LINE)
+      var pauseTime = L.pause || PAUSE_AFTER_LINE[i] || LINE_PAUSE;
+      var lineOK = await waitWithAudio(
+        reduce ? 50 : pauseTime,
+        id
+      );
+      if (!lineOK) return;
+    }
+
+    // PENUTUP ANIMASI
+    var endOK = await waitWithAudio(
+      reduce ? 200 : 1300,
+      id
+    );
+    if (!endOK || id !== runId) return;
+
+    zoomOut();
+
+    var zoomOK = await waitWithAudio(
+      reduce ? 200 : 2400,
+      id
+    );
+    if (!zoomOK || id !== runId) return;
+
+    finished = true;
+    again.style.opacity = 1;
+  }
+
+  // =====================================
+  // KONTROL AUDIO DAN LIRIK
+  // =====================================
+
+  // Saat tombol PLAY ditekan
+  audio.addEventListener('play', function () {
+    // Jangan mengulang animasi saat lagu hanya dilanjutkan
+    if (!started) {
+      started = true;
+      playLyrics();
+    }
+  });
+
+  // Saat lagu selesai
+  audio.addEventListener('ended', function () {
+    runId++;
+    started = false;
+    finished = false;
+    again.style.opacity = 1;
+    cursor.classList.remove('typing');
+  });
+
+  // Saat lagu diputar ulang dari awal
+  audio.addEventListener('seeked', function () {
+    if (audio.currentTime < 0.15 && started) {
+      runId++;
+      started = false;
+      finished = false;
+      again.style.opacity = 0;
+    }
+  });
+
+  // =====================================
+  // TIMECODE MENGIKUTI LAGU
+  // =====================================
+  function pad2(n) {
+    return (n < 10 ? '0' : '') + n;
+  }
+
+  setInterval(function () {
+    var t = audio.currentTime || 0;
+    var hours = Math.floor(t / 3600);
+    var minutes = Math.floor(t / 60) % 60;
+    var seconds = Math.floor(t) % 60;
+    var frames = Math.floor((t % 1) * 24);
+
+    tcEl.textContent =
+      pad2(hours) + ':' +
+      pad2(minutes) + ':' +
+      pad2(seconds) + ':' +
+      pad2(frames);
+  }, 41);
+
+  // =====================================
+  // PERSIAPAN AWAL
+  // =====================================
+
+  build();
+
+})();
+</script>
+
+</body>
+</html>
